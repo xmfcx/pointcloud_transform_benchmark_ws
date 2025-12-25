@@ -3,6 +3,9 @@
 ## Replicate the results
 
 ```bash
+git clone https://github.com/xmfcx/pointcloud_transform_benchmark_ws.git
+cd pointcloud_transform_benchmark_ws
+
 sudo apt update
 sudo apt install -y python3-matplotlib python3-pandas
 
