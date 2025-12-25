@@ -1,11 +1,28 @@
 # PointCloud Transformation Benchmark
 
+## Replicate the results
+
 ```bash
+docker build --progress=plain -f docker/Dockerfile -t pointcloud-transform-benchmark .
+
+docker run -it \
+  --net=host \
+  --user $(id -u):$(id -g) \
+  -v $(pwd):/home/ubuntu/pointcloud_transform_benchmark_ws \
+  -w /home/ubuntu/pointcloud_transform_benchmark_ws \
+  pointcloud-transform-benchmark bash
+
+colcon build --symlink-install --event-handlers=console_cohesion+ --cmake-args -DCMAKE_BUILD_TYPE=Release
+source install/setup.bash
+
 # set CORE to one of your cpu cores, I set to 3, benchmark will only use that specific core
 # benchmark_repetitions is set to 50
 ./benchmark.sh
 python3 plot_boxplot.py
 python3 plot_line_graph.py
+
+# Plots will be available in the root directory:
+# benchmark_boxplot.png and benchmark_lineplot.png
 ```
 
 All the bench code is in [benchmark.cpp](src/pointcloud_transform_benchmark/src/benchmark.cpp).
