@@ -1,6 +1,5 @@
 #include <chrono>
 #include <random>
-#include <vector>
 #include <iostream>
 
 #include <rclcpp/rclcpp.hpp>
@@ -17,6 +16,9 @@
 #include <pcl/point_types.h>
 #include <pcl/common/transforms.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <pcl_ros/transforms.hpp>
+
+#include <benchmark/benchmark.h>
 
 using Clock = std::chrono::steady_clock;
 
@@ -81,92 +83,70 @@ sensor_msgs::msg::PointCloud2 createRandomCloud(std::size_t num_points) {
 /* ------------------------------------------------------------
  * Benchmark: PCL transform
  * ------------------------------------------------------------ */
-void benchmarkPCL(
-    const std::vector<sensor_msgs::msg::PointCloud2> &clouds,
-    const std::vector<geometry_msgs::msg::TransformStamped> &transforms) {
-    auto start = Clock::now();
+static void BM_PCL_Transform(benchmark::State& state) {
+    // Setup
+    std::size_t num_points = state.range(0);
+    sensor_msgs::msg::PointCloud2 cloud = createRandomCloud(num_points);
+    geometry_msgs::msg::TransformStamped tf = randomTransform();
 
-    for (const auto &cloud: clouds) {
+    for (auto _ : state) {
         pcl::PointCloud<pcl::PointXYZ> pcl_in;
         pcl::PointCloud<pcl::PointXYZ> pcl_out;
         pcl::fromROSMsg(cloud, pcl_in);
 
-        for (const auto &tf: transforms) {
-            Eigen::Matrix4f mat =
-                    tf2::transformToEigen(tf.transform).matrix().cast<float>();
+        Eigen::Matrix4f mat =
+                tf2::transformToEigen(tf.transform).matrix().cast<float>();
 
-            pcl::transformPointCloud(pcl_in, pcl_out, mat);
+        pcl::transformPointCloud(pcl_in, pcl_out, mat);
 
-            sensor_msgs::msg::PointCloud2 out;
-            pcl::toROSMsg(pcl_out, out);
-        }
+        sensor_msgs::msg::PointCloud2 out;
+        pcl::toROSMsg(pcl_out, out);
     }
-
-    auto end = Clock::now();
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-    std::cout << "RESULT,PCL," << ms << std::endl;
 }
 
 /* ------------------------------------------------------------
  * Benchmark: tf2::doTransform
  * ------------------------------------------------------------ */
-void benchmarkTF2(
-    const std::vector<sensor_msgs::msg::PointCloud2> &clouds,
-    const std::vector<geometry_msgs::msg::TransformStamped> &transforms) {
-    auto start = Clock::now();
+static void BM_TF2_Transform(benchmark::State& state) {
+    // Setup
+    std::size_t num_points = state.range(0);
+    sensor_msgs::msg::PointCloud2 cloud = createRandomCloud(num_points);
+    geometry_msgs::msg::TransformStamped tf = randomTransform();
 
-    for (const auto &cloud: clouds) {
-        for (const auto &tf: transforms) {
-            sensor_msgs::msg::PointCloud2 out;
-            tf2::doTransform(cloud, out, tf);
-        }
+    for (auto _ : state) {
+        sensor_msgs::msg::PointCloud2 out;
+        tf2::doTransform(cloud, out, tf);
     }
-
-    auto end = Clock::now();
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-    std::cout << "RESULT,TF2," << ms << std::endl;
 }
 
 /* ------------------------------------------------------------
- * Main
+ * Benchmark: pcl_ros::transformPointCloud
  * ------------------------------------------------------------ */
-int main(int argc, char ** argv)
-{
-    rclcpp::init(argc, argv);
+static void BM_PCL_ROS_Transform(benchmark::State& state) {
+    // Setup
+    std::size_t num_points = state.range(0);
+    sensor_msgs::msg::PointCloud2 cloud = createRandomCloud(num_points);
+    geometry_msgs::msg::TransformStamped tf = randomTransform();
 
-    std::size_t num_clouds = 1000;
-    std::size_t num_transforms = 100;
-
-    if (argc >= 2) {
-        num_clouds = static_cast<std::size_t>(std::stoul(argv[1]));
+    for (auto _ : state) {
+        sensor_msgs::msg::PointCloud2 out;
+        Eigen::Matrix4f mat =
+                tf2::transformToEigen(tf.transform).matrix().cast<float>();
+        pcl_ros::transformPointCloud(mat, cloud, out);
     }
-    if (argc >= 3) {
-        num_transforms = static_cast<std::size_t>(std::stoul(argv[2]));
-    }
+}
 
-    std::vector<sensor_msgs::msg::PointCloud2> clouds;
-    clouds.reserve(num_clouds);
+// Register the benchmarks
+// Use a fixed size for boxplot comparison, e.g. 200000 points
+BENCHMARK(BM_PCL_Transform)->Arg(200000)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_TF2_Transform)->Arg(200000)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_PCL_ROS_Transform)->Arg(200000)->Unit(benchmark::kMicrosecond);
 
-    for (std::size_t i = 0; i < num_clouds; ++i) {
-        std::size_t size = static_cast<std::size_t>(randomFloat(500.f, 50000.f));
-        clouds.emplace_back(createRandomCloud(size));
-    }
-
-    std::vector<geometry_msgs::msg::TransformStamped> transforms;
-    transforms.reserve(num_transforms);
-    for (std::size_t i = 0; i < num_transforms; ++i) {
-        transforms.emplace_back(randomTransform());
-    }
-
-    std::cout << "Benchmarking "
-              << num_clouds << " clouds × "
-              << num_transforms << " transforms\n";
-
-    benchmarkPCL(clouds, transforms);
-    benchmarkTF2(clouds, transforms);
-
-    rclcpp::shutdown();
-    return 0;
+int main(int argc, char** argv) {
+  rclcpp::init(argc, argv);
+  ::benchmark::Initialize(&argc, argv);
+  if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
+  ::benchmark::RunSpecifiedBenchmarks();
+  rclcpp::shutdown();
+  return 0;
 }

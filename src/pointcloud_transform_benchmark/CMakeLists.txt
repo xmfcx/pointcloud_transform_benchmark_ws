@@ -16,6 +16,8 @@ find_package(tf2_sensor_msgs REQUIRED)
 find_package(tf2_eigen REQUIRED)
 find_package(PCL REQUIRED)
 find_package(pcl_conversions REQUIRED)
+find_package(pcl_ros REQUIRED)
+find_package(benchmark REQUIRED)
 
 include_directories(
   ${PCL_INCLUDE_DIRS}
@@ -25,6 +27,7 @@ add_executable(benchmark src/benchmark.cpp)
 
 target_link_libraries(benchmark
   ${PCL_LIBRARIES}
+  benchmark::benchmark
 )
 
 ament_target_dependencies(benchmark
@@ -37,6 +40,7 @@ ament_target_dependencies(benchmark
   tf2_sensor_msgs
   tf2_eigen
   pcl_conversions
+  pcl_ros
 )
 
 install(TARGETS benchmark
@@ -44,4 +48,3 @@ install(TARGETS benchmark
 )
 
 ament_package()
-

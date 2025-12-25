@@ -3,5 +3,6 @@
 /install/
 /log/
 
-/results.csv
+/results.json
 /benchmark_boxplot.png
+/benchmark_lineplot.png
