@@ -3,16 +3,14 @@
 ## Replicate the results
 
 ```bash
-docker build --progress=plain -f docker/Dockerfile -t pointcloud-transform-benchmark .
+sudo apt update
+sudo apt install -y python3-matplotlib python3-pandas
 
-docker run -it \
-  --net=host \
-  --user $(id -u):$(id -g) \
-  -v $(pwd):/home/ubuntu/pointcloud_transform_benchmark_ws \
-  -w /home/ubuntu/pointcloud_transform_benchmark_ws \
-  pointcloud-transform-benchmark bash
+source /opt/ros/humble/setup.bash
+rosdep install -y --from-paths src --ignore-src --rosdistro $ROS_DISTRO
 
 colcon build --symlink-install --event-handlers=console_cohesion+ --cmake-args -DCMAKE_BUILD_TYPE=Release
+
 source install/setup.bash
 
 # set CORE to one of your cpu cores, I set to 3, benchmark will only use that specific core
