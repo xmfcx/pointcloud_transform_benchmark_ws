@@ -10,6 +10,23 @@ python3 plot_line_graph.py
 
 All the bench code is in [benchmark.cpp](src/pointcloud_transform_benchmark/src/benchmark.cpp).
 
+## Bench setup
+
+**Inputs:**
+- 200.000 points (like vls128) point cloud, random points in `sensor_msgs::msg::PointCloud2` format.
+- Random transformation matrix in `geometry_msgs::msg::TransformStamped` format.
+
+**Task:**
+- Transform and return in the input format
+
+**Competing methods:**
+1. **PCL:** Converts from `sensor_msgs` to `pcl`, transform, converts back to `sensor_msgs`.
+2. **TF2:** [Directly transform without unnecessary middle steps.](https://github.com/ros2/geometry2/blob/78ef2e48c31f3a38d67e8198e28cb9596d58c2df/tf2_sensor_msgs/include/tf2_sensor_msgs/tf2_sensor_msgs.hpp#L77-L150)
+3. **PCL_ROS:** [Directly transforms the point cloud](https://github.com/ros-perception/perception_pcl/blob/67a5c2ba4c4de3ca21c5cd495812a01ced3fb69a/pcl_ros/src/transforms.cpp#L127-L227) too but does many other things too, ends up being 2 times slower in the benchmark.
+   - This is the proposed method in [qiita link](https://qiita.com/yakato_jun/items/091f36308b0662110537).
+
+## Results
+
 **50 runs:**
 
 ![benchmark_boxplot.png](assets/benchmark_boxplot.png)
